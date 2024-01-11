@@ -29,15 +29,20 @@
         return model;
       }
 
+      // 和模型训练时用的数据格式保持一致，要把数据映射到同样的区间
+      const handleFeature = (value) => {
+        return parseFloat(value) / 100;
+      };
+
       async function predictPrice(event) {
         event.preventDefault();
         const form = document.getElementById("prediction-form");
         const formData = new FormData(form);
         const data = [
-          parseFloat(formData.get("longitude")),
-          parseFloat(formData.get("latitude")),
-          // parseFloat(formData.get("listing-time")),
+          handleFeature(parseFloat(formData.get("longitude"))),
+          handleFeature(parseFloat(formData.get("latitude"))),
         ];
+
         console.log(data);
         // 假设您的模型需要处理的输入数据是[longitude, latitude, listingTime]
         const inputTensor = tf.tensor2d([data]);
@@ -45,7 +50,7 @@
         const model = await loadModel();
         const prediction = model.predict(inputTensor);
         // 获取预测结果，这里假设输出是一个标量值
-        const price = prediction.arraySync();
+        const price = prediction.arraySync()[0];
         console.log(price);
 
         document.getElementById(

@@ -7,34 +7,27 @@ const tf = require("@tensorflow/tfjs-node");
 const featuresColumns = ["经度", "纬度"];
 const targetColumn = "单价";
 
-// 预处理函数，将原始数据转换为包含特征与目标值的对象数组
+// 映射到某个区间
+const handleFeature = (value) => {
+  return parseFloat(value) / 100;
+};
+
 const preprocessData = (data) => {
+  // 具体到这个问题上，主要是经度维度存在小数点后位数特别多的情况，直接用会导致精度溢出
+  //! 这里进行【归一化】操作，一般就是将所有值映射到 [0, 1] 这个区间内、
+  //! 不过这里的我们就随便映射到一个区间了
+
   return data
-    .filter((item) => {
-      const hasAllFeatures = featuresColumns.every((feature) => item[feature]);
-      return hasAllFeatures && item[targetColumn];
-    })
+    .filter((item) => item[targetColumn])
     .map((item) => {
       const processedItem = {
-        features: featuresColumns.map((feature) => parseFloat(item[feature])),
+        features: [handleFeature(item["经度"]), handleFeature(item["纬度"])],
         unitPrice: parseFloat(item[targetColumn]),
       };
-
-      // 对日期进行处理（假设挂牌时间是yyyy-MM-dd格式）
-      // if (!isNaN(processedItem.features[2])) {
-      //   // 如果挂牌时间能被解析为数字，则转化为天数差值
-      //   const dateStr = new Date(item["挂牌时间"]).toISOString().split("T")[0];
-      //   const baseDate = new Date("2020-01-01").getTime(); // 基准日期
-      //   const listingDate = new Date(dateStr).getTime();
-      //   processedItem.features[2] =
-      //     (listingDate - baseDate) / (1000 * 60 * 60 * 24);
-      // }
-      console.log(processedItem);
       return processedItem;
     });
 };
 
-// 创建模型函数
 const createModel = (inputShape) => {
   const model = tf.sequential();
   model.add(
@@ -44,12 +37,16 @@ const createModel = (inputShape) => {
       activation: "linear",
     })
   );
-  model.compile({ optimizer: "sgd", loss: "meanSquaredError" });
+  const learningRate = 0.0001;
+  model.compile({
+    optimizer: tf.train.sgd(learningRate),
+    loss: "meanSquaredError",
+  });
   return model;
 };
 
-// 训练模型函数
 const trainModel = async (processedData, epochs = 100) => {
+  console.log("开始训练");
   const xs = tf.tensor2d(
     processedData.map((item) => item.features),
     [processedData.length, processedData[0].features.length]
@@ -72,6 +69,7 @@ const trainModel = async (processedData, epochs = 100) => {
 // 主函数
 async function main() {
   let data = [];
+  //! 第一步：读取数据
   fs.createReadStream("my_data/linan杭州二手房.csv")
     .pipe(iconv.decodeStream("gbk")) // 将这里的'gbk'替换为你的实际编码格式
     .pipe(csvParser())
@@ -79,14 +77,22 @@ async function main() {
       data.push(row);
     })
     .on("end", () => {
+      //! 第二步：预处理数据
       const processedData = preprocessData(data);
-
+      //! 第三步：训练模型
       trainModel(processedData)
         .then((model) => {
-          // model.save("./house_price_model");
-          // console.log(model);
+          //! 第四步：测试模型(由于这里只做示意，所以这里就随便 mock 了一个数据意思一下就行了)
+          const mockSample = [
+            handleFeature(119.730838),
+            handleFeature(30.255086),
+          ];
+          const xs = tf.tensor2d(mockSample, [1, mockSample.length]);
+          const predictionTensor = model.predict(xs);
+          console.log("结果：", predictionTensor.arraySync());
+
+          // 保存到本地
           model.save("file://./my-model");
-          // 进行评估或保存模型等操作...
         })
         .catch((err) => console.error(err));
     });
