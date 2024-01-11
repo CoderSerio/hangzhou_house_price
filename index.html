@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh">
+  <head>
+    <meta charset="UTF-8" />
+    <title>房价预测</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  </head>
+  <body>
+    <form id="prediction-form">
+      <label for="longitude">经度：</label>
+      <input
+        type="number"
+        step="any"
+        id="longitude"
+        name="longitude"
+        required
+      />
+      <label for="latitude">纬度：</label>
+      <input type="number" step="any" id="latitude" name="latitude" required />
+      <!-- <label for="listing-time">挂牌时间：</label> -->
+      <!-- <input type="date" id="listing-time" name="listing-time" required /> -->
+      <button type="submit">确认并预测单价</button>
+    </form>
+    <p id="predicted-price"></p>
+
+    <script type="module">
+      async function loadModel() {
+        const model = await tf.loadLayersModel("./my-model/model.json");
+        return model;
+      }
+
+      async function predictPrice(event) {
+        event.preventDefault();
+        const form = document.getElementById("prediction-form");
+        const formData = new FormData(form);
+        const data = [
+          parseFloat(formData.get("longitude")),
+          parseFloat(formData.get("latitude")),
+          // parseFloat(formData.get("listing-time")),
+        ];
+        console.log(data);
+        // 假设您的模型需要处理的输入数据是[longitude, latitude, listingTime]
+        const inputTensor = tf.tensor2d([data]);
+
+        const model = await loadModel();
+        const prediction = model.predict(inputTensor);
+        // 获取预测结果，这里假设输出是一个标量值
+        const price = prediction.arraySync();
+        console.log(price);
+
+        document.getElementById(
+          "predicted-price"
+        ).innerText = `预测单价: ${price}元/平方米`;
+      }
+
+      // 添加事件监听器
+      const formElement = document.getElementById("prediction-form");
+      formElement.addEventListener("submit", predictPrice);
+    </script>
+  </body>
+</html>

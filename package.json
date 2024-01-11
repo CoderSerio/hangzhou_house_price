@@ -1,0 +1,17 @@
+{
+  "name": "tensorflowjs-demo",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@tensorflow/tfjs-node": "^4.16.0",
+    "csv-parser": "^3.0.0",
+    "iconv-lite": "^0.6.3"
+  }
+}
